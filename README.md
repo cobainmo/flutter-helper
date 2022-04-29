@@ -11,5 +11,10 @@ dependencies:
   framework:
     path: ../flutter-helper/
 ```
+Or include with repo link directly
+dependencies:
+  framework:
+    path: https://github.com/cobainmo/flutter-helper.git
+```
 # Usage
 Include in your project. Read the source code. Cry.
