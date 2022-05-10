@@ -33,6 +33,9 @@ class RequestResponse {
   /// response data as json
   Map<String, dynamic>? jsonResponse;
 
+  /// response data as json
+  List<dynamic>? jsonArray;
+
   /// is the response ok
   bool ok = false;
 
@@ -58,15 +61,18 @@ class Requests {
   static Duration timeoutDuration = const Duration(seconds: 3);
 
   static Future<RequestResponse> request(
-      RequestMethod method,
-      String url, {
-        String? body,
-        Map<String, String>? headers,
-        bool multipart = false,
-        List<http.MultipartFile>? files,
-        List<String>? expectedContentTypes,
-        Duration? timeout,
-      }) async {
+    RequestMethod method,
+    String url, {
+    String? body,
+    Map<String, String>? headers,
+    bool multipart = false,
+    bool form = false,
+    List<http.MultipartFile>? files,
+    Map<String, String>? fields,
+    List<String>? expectedContentTypes,
+    bool isJsonArray = false,
+    Duration? timeout,
+  }) async {
     var uri = Uri.parse(url);
     var result = RequestResponse();
 
@@ -96,6 +102,7 @@ class Requests {
 
         if (headers != null) multipartReq.headers.addAll(headers);
         if (files != null) multipartReq.files.addAll(files);
+        if (files != null) multipartReq.fields.addAll(fields!);
 
         response = await multipartReq.send().timeout(timeoutDuration);
       } else {
@@ -209,7 +216,11 @@ class Requests {
 
       if (isJson) {
         try {
-          result.jsonResponse = json.decode(responseBody);
+          if (!isJsonArray) {
+            result.jsonResponse = json.decode(responseBody);
+          } else {
+            result.jsonArray = json.decode(responseBody);
+          }
         } catch (e) {
           result.ok = false;
           print('response > Failed to parse json for $url');
@@ -231,13 +242,25 @@ class Requests {
   static bool validateResponse(RequestResponse response, List<String>? expectedContentTypes) {
     expectedContentTypes ??= Requests.expectedContentTypes;
 
-    if (expectedContentTypes.isEmpty || expectedContentTypes.contains(response.contentType)) {
-      response.ok = response.ok && true;
+    var contains = false;
+
+    if (expectedContentTypes != null) {
+      var base = response.contentType;
+
+      for (var type in expectedContentTypes) {
+        if (response.contentType.contains(type)) contains = true;
+      }
+    } else {
+      contains = true;
+    }
+
+    if (contains) {
       response.isExpectedContentType = true;
       return true;
     } else {
       // no content, so no content type expected
       if (response.contentLength == 0) {
+        response.isExpectedContentType = true;
         return true;
       }
 
